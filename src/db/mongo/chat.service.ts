@@ -16,6 +16,7 @@ export class ChatService {
     // This method retrieves the last 50 messages from a specific room
     // sorted by creation date in descending order
     async getMessagesByRoom(room: string): Promise<Message[]> {
+        
         return await this.messageModel.find({ room }).sort({ createdAt: -1 }).limit(50).exec();
     }
 }

@@ -3,7 +3,13 @@ import { Server, Socket } from "socket.io";
 import { ChatService } from "src/db/mongo/chat.service";
 import { Message } from "src/db/mongo/message.schema";
 
-@WebSocketGateway({ cors: {origin: '*' } })
+@WebSocketGateway({ 
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+    },  
+    transports: ['websocket'],
+ })
 export class ChatGateway {
     // This is a WebSocket gateway for handling chat messages
     // It uses the @WebSocketGateway decorator from NestJS
@@ -22,13 +28,14 @@ export class ChatGateway {
         const history = await this.chatService.getMessagesByRoom(room);
         client.emit('history', history);
     }
-
-    @SubscribeMessage('message')
+    
+    // This method is called when a client sends a message
+    @SubscribeMessage('sendMessage')
     async handleMessage(
         @MessageBody() data: Message, 
         @ConnectedSocket() client: Socket
     ) {
         await this.chatService.saveMessage(data);
-        this.server.to(data.room).emit('message', data);
+        this.server.to(data.room).emit('newMessage', data);
     }
 }
