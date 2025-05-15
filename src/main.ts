@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { RedisAdapter } from './redis.adapter';
+import { RedisAdapter } from './db/redis/redis.adapter';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
@@ -16,6 +16,8 @@ async function bootstrap() {
   dayjs.tz.setDefault('America/El_Salvador'); // Setting the default timezone
 
   
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT || 3000, () => {
+    console.log(`http://localhost:${process.env.PORT || 3000}`);
+  }); // PORT
 }
 bootstrap();
