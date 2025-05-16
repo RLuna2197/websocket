@@ -13,7 +13,7 @@ import { UsersModule } from './users/users.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(
-      'mongodb://localhost:27019/chat',
+      `mongodb://${process.env.MONGOOSE_HOST}:${process.env.MONGOOSE_PORT}/${process.env.MONGOSE_DATABASE}`,
     ),
     MongooseModule.forFeature([
       {

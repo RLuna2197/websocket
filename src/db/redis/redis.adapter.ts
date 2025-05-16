@@ -7,7 +7,7 @@ export class RedisIoAdapter extends IoAdapter {
     // Crea un cliente Redis para la publicación y suscripción
     // y otro cliente para la suscripción.
     // El cliente de publicación y suscripción se conecta al mismo servidor Redis.
-    const pubClient = createClient({ url: 'redis://localhost:6379' });
+    const pubClient = createClient({ url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`});
     const subClient = pubClient.duplicate();
     await pubClient.connect();
     await subClient.connect();
