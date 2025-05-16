@@ -36,6 +36,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    async handleConnection(@ConnectedSocket() client: Socket) {
     try {
       const token = client.handshake.auth.token;
+      console.log(token);
       const payload = this.jwtService.verify(token); // Verifica y decodifica el token
       client.data.user = payload;
       console.log(`Cliente conectado: ${payload.email || payload.sub}`);
@@ -50,12 +51,13 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
   
    // Emitir rooms activas al cliente
-  @SubscribeMessage('roomList')
+  @SubscribeMessage('rooms')
   async handleGetRooms(@ConnectedSocket() client: Socket) {
     const rooms = await this.chatService.getRooms();
     // rooms es un array de strings con el nombre de las rooms
-    const filtered = rooms.filter((room) => room !== 'default');
-    client.emit('roomList', filtered);
+    console.log(rooms);
+    
+    client.emit('roomList', rooms);
   }
 
   @SubscribeMessage('joinRoom')
