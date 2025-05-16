@@ -1,4 +1,13 @@
-import { ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
+import { 
+    ConnectedSocket, 
+    OnGatewayInit,
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    MessageBody, 
+    SubscribeMessage, 
+    WebSocketGateway, 
+    WebSocketServer } from "@nestjs/websockets";
+import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from "socket.io";
 import { ChatService } from "src/db/mongo/chat.service";
 import { Message } from "src/db/mongo/message.schema";
@@ -10,32 +19,59 @@ import { Message } from "src/db/mongo/message.schema";
     },  
     transports: ['websocket'],
  })
-export class ChatGateway {
-    // This is a WebSocket gateway for handling chat messages
-    // It uses the @WebSocketGateway decorator from NestJS
-    // to create a WebSocket server that listens for incoming connections
-    // and broadcasts messages to all connected clients.
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+    // Esta es una puerta de enlace WebSocket para gestionar mensajes de chat.
+    // Utiliza el decorador @WebSocketGateway de NestJS.
+    // para crear un servidor WebSocket que escucha las conexiones entrantes.
+    // y transmite mensajes a todos los clientes conectados.
 
-    constructor(private readonly chatService: ChatService) {}
+    constructor(private readonly chatService: ChatService, private readonly jwtService: JwtService) {}
+    afterInit(server: any) {
+        console.log('WebSocket server initialized');
+    }
 
     @WebSocketServer()
     server: Server;
 
-    // This method is called when a new client connects to the WebSocket server
-    @SubscribeMessage('joinRoom')
+   async handleConnection(@ConnectedSocket() client: Socket) {
+    try {
+      const token = client.handshake.auth.token;
+      const payload = this.jwtService.verify(token); // Verifica y decodifica el token
+      client.data.user = payload;
+      console.log(`Cliente conectado: ${payload.email || payload.sub}`);
+    } catch (err) {
+      console.error('Token inválido:', err.message);
+      client.disconnect(); // desconectar si el token no es válido
+    }
+  }
+
+  handleDisconnect(@ConnectedSocket() client: Socket) {
+    console.log('Cliente desconectado');
+  }
+  
+   // Emitir rooms activas al cliente
+  @SubscribeMessage('roomList')
+  async handleGetRooms(@ConnectedSocket() client: Socket) {
+    const rooms = await this.chatService.getRooms();
+    // rooms es un array de strings con el nombre de las rooms
+    const filtered = rooms.filter((room) => room !== 'default');
+    client.emit('roomList', filtered);
+  }
+
+  @SubscribeMessage('joinRoom')
     async handleJoinRoom(@MessageBody() room: string, @ConnectedSocket() client: Socket) {
         client.join(room);
         const history = await this.chatService.getMessagesByRoom(room);
         client.emit('history', history);
     }
-    
-    // This method is called when a client sends a message
-    @SubscribeMessage('sendMessage')
-    async handleMessage(
-        @MessageBody() data: Message, 
-        @ConnectedSocket() client: Socket
-    ) {
-        await this.chatService.saveMessage(data);
-        this.server.to(data.room).emit('newMessage', data);
-    }
+
+  // This method is called when a client sends a message
+  @SubscribeMessage('sendMessage')
+  async handleMessage(
+      @MessageBody() data: Message, 
+      @ConnectedSocket() client: Socket
+  ) {
+      await this.chatService.saveMessage(data);
+      this.server.to(data.room).emit('newMessage', data);
+  }
 }

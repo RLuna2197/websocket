@@ -13,6 +13,13 @@ export class ChatService {
         return await newMessage.save();
     }
 
+    // obtener rooms from the database
+    async getRooms(): Promise<string[]> {
+        // This method retrieves all unique rooms from the database
+        const rooms = await this.messageModel.distinct('room').exec();
+        console.log(rooms);
+        return rooms;
+    }
     // This method retrieves the last 50 messages from a specific room
     // sorted by creation date in descending order
     async getMessagesByRoom(room: string): Promise<Message[]> {
