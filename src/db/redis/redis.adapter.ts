@@ -4,6 +4,8 @@ import { createClient } from 'redis';
 
 export class RedisIoAdapter extends IoAdapter {
   async connectToRedis() {
+    // Se usa redis como adaptador para Socket.IO porque
+    // permite la comunicación entre múltiples instancias de Socket.IO.
     // Crea un cliente Redis para la publicación y suscripción
     // y otro cliente para la suscripción.
     // El cliente de publicación y suscripción se conecta al mismo servidor Redis.

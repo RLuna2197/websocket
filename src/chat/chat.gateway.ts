@@ -9,8 +9,8 @@ import {
     WebSocketServer } from "@nestjs/websockets";
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from "socket.io";
-import { ChatService } from "src/db/mongo/chat.service";
-import { Message } from "src/db/mongo/message.schema";
+import { ChatService } from "../db/mongo/chat.service";
+import { Message } from "../db/mongo/message.schema";
 
 @WebSocketGateway({ 
     cors: {
@@ -36,10 +36,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    async handleConnection(@ConnectedSocket() client: Socket) {
     try {
       const token = client.handshake.auth.token;
-      console.log(token);
       const payload = this.jwtService.verify(token); // Verifica y decodifica el token
       client.data.user = payload;
-      console.log(`Cliente conectado: ${payload.email || payload.sub}`);
+      console.log(`Cliente conectado: ${payload.username || payload.sub}`);
     } catch (err) {
       console.error('Token inválido:', err.message);
       client.disconnect(); // desconectar si el token no es válido
@@ -55,8 +54,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   async handleGetRooms(@ConnectedSocket() client: Socket) {
     const rooms = await this.chatService.getRooms();
     // rooms es un array de strings con el nombre de las rooms
-    console.log(rooms);
-    
+
     client.emit('roomList', rooms);
   }
 

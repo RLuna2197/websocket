@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChatGateway } from './chat.gateway';
-import { ChatService } from 'src/db/mongo/chat.service';
+import { ChatService } from '../db/mongo/chat.service';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
-import { Message } from 'src/db/mongo/message.schema';
+import { Message } from '../db/mongo/message.schema';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -12,6 +12,8 @@ describe('ChatGateway', () => {
   let mockServer: Partial<Server>;
 
   beforeEach(async () => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     const mockChatService = {
       getRooms: jest.fn(),
       getMessagesByRoom: jest.fn(),
@@ -19,7 +21,7 @@ describe('ChatGateway', () => {
     };
 
     const mockJwtService = {
-      verify: jest.fn(),
+      verify: jest.fn(), // no le ponemos comportamiento por defecto aquí
     };
 
     mockServer = {
@@ -55,12 +57,13 @@ describe('ChatGateway', () => {
         disconnect: jest.fn(),
       } as unknown as Socket;
 
-      (jwtService.verify as jest.Mock).mockReturnValue({ email: 'test@example.com' });
+      const payload = { username: 'testUser' };
+      (jwtService.verify as jest.Mock).mockReturnValue(payload);
 
       gateway.handleConnection(client);
 
       expect(jwtService.verify).toHaveBeenCalledWith('valid.token');
-      expect(client.data.user.email).toBe('test@example.com');
+      expect(client.data.user).toEqual(payload);
       expect(client.disconnect).not.toHaveBeenCalled();
     });
 
@@ -71,7 +74,9 @@ describe('ChatGateway', () => {
         disconnect: jest.fn(),
       } as unknown as Socket;
 
-      (jwtService.verify as jest.Mock).mockImplementation(() => { throw new Error('Invalid token'); });
+      (jwtService.verify as jest.Mock).mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
 
       gateway.handleConnection(client);
 
@@ -85,7 +90,7 @@ describe('ChatGateway', () => {
         emit: jest.fn(),
       } as unknown as Socket;
 
-      (chatService.getRooms as jest.Mock).mockResolvedValue(['default', 'room1', 'room2']);
+      (chatService.getRooms as jest.Mock).mockResolvedValue(['room1', 'room2']);
 
       await gateway.handleGetRooms(client);
 
@@ -113,9 +118,14 @@ describe('ChatGateway', () => {
 
   describe('handleMessage', () => {
     it('should save message and emit to room', async () => {
-      const message = { room: 'room1', sender: 'user1', text: 'test', timestamp: new Date().toISOString() } as Partial<Message> as Message;
+      const message = {
+        room: 'room1',
+        sender: 'user1',
+        text: 'test',
+        timestamp: new Date().toISOString(),
+      } as Partial<Message> as Message;
 
-      const client = {} as Socket; // no usamos métodos de client aquí
+      const client = {} as Socket;
 
       (chatService.saveMessage as jest.Mock).mockResolvedValue(undefined);
 
