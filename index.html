@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket.IO Chat Login</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    #messages { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin-bottom: 10px; }
+    input, button { padding: 8px; margin: 5px; }
+
+    #loginModal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex; justify-content: center; align-items: center;
+    }
+    #loginModalContent {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>Socket.IO Chat</h2>
+  <div>
+    <input id="room" placeholder="Room" value="general" />
+    <button onclick="joinRoom()">Join Room</button>
+    
+    <ul id="roomList"></ul>
+  </div>
+  <div>
+  </div>
+  <div id="messages"></div>
+  <div>
+    <input id="message" placeholder="Type a message" style="width: 300px;" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <!-- Modal de login -->
+  <div id="loginModal">
+    <div id="loginModalContent">
+      <h3>Login</h3>
+      <input id="usernameInput" placeholder="Username" /><br/>
+      <input id="passwordInput" placeholder="Password" type="password" /><br/>
+      <button onclick="login()">Login</button>
+    </div>
+  </div>
+
+  <script>
+    let username = null;
+    let token = localStorage.getItem("token");
+    let socket;
+
+    async function login() {
+      const user = document.getElementById("usernameInput").value.trim();
+      const pass = document.getElementById("passwordInput").value.trim();
+
+      if (!user || !pass) {
+        alert("Username and password required");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+
+        if (!res.ok) {
+          throw new Error("Invalid credentials");
+        }
+
+        const data = await res.json();
+        token = data.access_token;
+        username = user;
+        localStorage.setItem("token", token);
+        localStorage.setItem("chatUsername", username);
+
+        document.getElementById("loginModal").style.display = "none";
+        initSocket();
+
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    }
+
+    function initSocket() {
+      socket = io("http://localhost:3000", {
+        transports: ["websocket"],
+        auth: {
+          token: token
+        },
+      });
+
+      socket.on("connect", () => {
+        log("✅ Connected to server");
+        socket.emit("rooms");
+      });
+
+      socket.on("disconnect", () => {
+        log("❌ Disconnected");
+      });
+
+      socket.on("history", (messages) => {
+        log("📜 Chat history:");
+        messages.forEach((msg) => {
+          log(`[${msg.sender}] ${msg.text}`);
+        });
+      });
+
+      socket.on("newMessage", (msg) => {
+        log(`💬 [${msg.sender}] ${msg.text}`);
+      });
+      
+      socket.on("roomList", (rooms) => {
+        const roomList = document.getElementById("roomList");
+        roomList.innerHTML = "";
+        console.log(rooms);
+        rooms.forEach((room) => {
+          const li = document.createElement("li");
+          
+          li.textContent = room;
+          li.onclick = () => {
+            document.getElementById("room").value = room;
+            joinRoom();
+          };
+          roomList.appendChild(li);
+          
+        });
+      });
+    }
+
+    function joinRoom() {
+      clearMessages();
+      const room = document.getElementById("room").value;
+      socket.emit("joinRoom", room);
+      log(`🔵 Joined room: ${room}`);
+    }
+
+
+    function sendMessage() {
+      const room = document.getElementById("room").value;
+      const message = document.getElementById("message").value;
+
+      const payload = {
+        room,
+        sender: username,
+        text: message,
+        timestamp: new Date().toISOString(),
+      };
+
+      socket.emit("sendMessage", payload);
+      document.getElementById("message").value = "";
+    }
+
+    function log(msg) {
+      const div = document.createElement("div");
+      div.textContent = msg;
+      document.getElementById("messages").appendChild(div);
+    }
+
+    function clearMessages() {
+      document.getElementById("messages").innerHTML = "";
+    }
+
+    // Si hay token guardado, intentar usarlo
+    const storedUsername = localStorage.getItem("chatUsername");
+    if (token && storedUsername) {
+      username = storedUsername;
+      document.getElementById("loginModal").style.display = "none";
+      initSocket();
+    }
+  </script>
+</body>
+</html>

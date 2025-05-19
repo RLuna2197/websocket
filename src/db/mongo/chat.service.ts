@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Message } from 'src/db/mongo/message.schema';
+import { Message } from './message.schema';
 import { Model } from 'mongoose';
 
 @Injectable()
@@ -15,7 +15,9 @@ export class ChatService {
 
     // obtener rooms from the database
     async getRooms(): Promise<string[]> {
-        // This method retrieves all unique rooms from the database
+        // Este método obtiene una lista de todas las "rooms" activas
+        // en la base de datos. Utiliza el método distinct para obtener
+        // una lista única de "rooms" de los mensajes almacenados.
         const rooms = await this.messageModel.distinct('room').exec();
         console.log(rooms);
         return rooms;

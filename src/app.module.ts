@@ -8,9 +8,14 @@ import { ChatGateway } from './chat/chat.gateway';
 import { Message, MessageSchema } from './db/mongo/message.schema';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-
+import { ServeStaticModule  } from '@nestjs/serve-static';
+import { join } from 'path';
 @Module({
   imports: [
+    ServeStaticModule .forRoot({
+      rootPath: join(__dirname, '..', 'documentation'),
+      serveRoot: '/docs',
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRoot(
       `mongodb://${process.env.MONGOOSE_HOST}:${process.env.MONGOOSE_PORT}/${process.env.MONGOSE_DATABASE}`,

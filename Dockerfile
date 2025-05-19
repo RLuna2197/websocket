@@ -6,16 +6,16 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
+RUN npm run documentation  # genera la doc en /documentation
 
 # Etapa 2: producción
 FROM node:23-alpine as production
 
 WORKDIR /app
-
-# Copia solo lo necesario desde la etapa de build
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/documentation ./documentation
+COPY package*.json ./
+RUN npm install --omit=dev
 
 ENV NODE_ENV=production
 EXPOSE 3000
